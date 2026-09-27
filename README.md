@@ -7,18 +7,23 @@
 [![DSFR](https://img.shields.io/badge/DSFR-1.11-000091?style=flat-square)](https://www.systeme-de-design.gouv.fr/)
 [![Licence](https://img.shields.io/badge/Licence-etalab--2.0-blue?style=flat-square)](https://www.etalab.gouv.fr/licence-ouverte-open-licence/)
 [![Statut](https://img.shields.io/badge/Statut-actif-success?style=flat-square)]()
+[![Dernier commit](https://img.shields.io/github/last-commit/gunout/moteur-api?style=flat-square&color=000091)](https://github.com/gunout/moteur-api/commits/main)
+[![Issues](https://img.shields.io/github/issues/gunout/moteur-api?style=flat-square&color=E1000F)](https://github.com/gunout/moteur-api/issues)
+[![Stars](https://img.shields.io/github/stars/gunout/moteur-api?style=flat-square&color=f1c40f)](https://github.com/gunout/moteur-api/stargazers)
 
 ---
 
 ## 📖 Présentation
 
-**Méta-moteur data.gouv.fr** est une application qui agrège en temps réel les résultats de **trois sources officielles** de la plateforme data.gouv.fr :
+**Méta-moteur data.gouv.fr** est une application qui agrège en temps réel les résultats de **plusieurs sources officielles** de la plateforme data.gouv.fr :
 
 | Source | Rôle |
 | :--- | :--- |
 | **API Catalogue v1** | Catalogue historique des jeux de données |
 | **API Catalogue v2** | Moteur du site actuel (métriques, qualité, filtres avancés) |
 | **API Dataservices** | Recensement des API publiques publiées sur la plateforme |
+| **API Organizations** | Résolution des slugs ministères → ID techniques |
+| **API Tabulaire** | Exploration des données tabulaires d'un dataset |
 
 Les résultats sont **dédoublonnés**, **normalisés** et **triés** selon plusieurs critères (pertinence, popularité, récence), puis exposés via une **interface web au design Marianne** (DSFR).
 
@@ -55,8 +60,10 @@ Les résultats sont **dédoublonnés**, **normalisés** et **triés** selon plus
 ## ✨ Fonctionnalités
 
 - 🔎 **Recherche multi-sources** en parallèle (v1, v2, dataservices)
+- 🏛️ **Filtrage par ministère** (12 ministères certifiés intégrés)
 - 🧩 **Dédoublonnage intelligent** avec traçabilité des sources multiples
-- 📊 **Score de popularité** calculé à partir des métriques (vues, téléchargements, réutilisations, abonnés)
+- 🔗 **Résolution slug → ID** pour les organisations (avec cache)
+- 📊 **Score de popularité** calculé à partir des métriques v2
 - 🎛️ **Filtres** : type (`dataset`, `dataservice`), organisation, type d'accès, récence
 - 🔀 **Tris** : pertinence, popularité, récence
 - 📄 **Pagination** unifiée
@@ -65,6 +72,27 @@ Les résultats sont **dédoublonnés**, **normalisés** et **triés** selon plus
 - 🎨 **Interface Marianne** (DSFR) avec mode sombre persistant
 - 🏷️ **Filtres client** par organisation et tags avec chips actives
 - ♿ **Accessibilité** conforme au DSFR (labels, `aria-live`, contrastes)
+
+---
+
+## 🏛️ Ministères intégrés
+
+Les slugs des ministères sont résolus automatiquement en IDs techniques par le backend (avec cache en mémoire) :
+
+| Ministère | Slug |
+| :--- | :--- |
+| Intérieur | `ministere-de-linterieur` |
+| Transition écologique | `ministere-de-la-transition-ecologique` |
+| Armées | `ministere-des-armees` |
+| Culture | `ministere-de-la-culture-et-de-la-communication` |
+| Justice | `ministere-de-la-justice` |
+| Économie & Finances | `ministeres-economiques-et-financiers` |
+| Industrie & Numérique | `ministere-de-l-economie-de-l-industrie-et-du-numerique` |
+| Agriculture | `ministere-de-lagriculture-de-lagro-alimentaire-et-de-la-souverainete-alimentaire` |
+| Solidarités & Santé | `ministere-des-solidarites-et-de-la-sante` |
+| Éducation nationale | `ministeres-de-leducation-nationale` |
+| Enseignement supérieur | `ministere-de-lenseignement-superieur-de-la-recherche-et-de-lespace` |
+| Sports | `ministere-charge-des-sports` |
 
 ---
 
@@ -86,13 +114,17 @@ moteur-api/
 │  Frontend   │  (index.html · DSFR)
 │  Navigateur │
 └──────┬──────┘
-       │ fetch /search?q=...
+       │ fetch /search?q=...&organization=...
        ▼
 ┌─────────────┐
 │  FastAPI    │  (main.py · port 8001)
 │  Backend    │
 └──────┬──────┘
-       │ asyncio.gather (requêtes parallèles)
+       │
+       │ 1. resolve_org_id(slug)  ──► API Organizations v1
+       │    (avec cache mémoire)
+       │
+       │ 2. asyncio.gather (requêtes parallèles)
        ├──────────────► API Catalogue v1
        ├──────────────► API Catalogue v2
        └──────────────► API Dataservices
@@ -157,6 +189,7 @@ Ou, si le montage `StaticFiles` n'est pas activé, ouvrez directement `index.htm
 | `GET` | `/search` | Recherche multi-sources |
 | `GET` | `/export` | Export CSV ou JSON |
 | `GET` | `/tabular/{dataset_id}` | Profil tabulaire d'un dataset |
+| `GET` | `/resolve-org/{slug}` | Résolution slug → ID d'organisation |
 
 ### Exemples
 
@@ -167,8 +200,11 @@ curl "http://127.0.0.1:8001/search?q=transport"
 # Recherche d'API uniquement, triée par popularité
 curl "http://127.0.0.1:8001/search?q=finance&type=dataservice&sort=popularity"
 
-# Recherche récente, filtrée par organisation
-curl "http://127.0.0.1:8001/search?q=logement&organization=insee&last_update=last_12_months"
+# Recherche par ministère (résolution slug → ID automatique)
+curl "http://127.0.0.1:8001/search?q=&organization=ministere-de-linterieur"
+
+# Vérifier la résolution d'un slug
+curl "http://127.0.0.1:8001/resolve-org/ministere-de-linterieur"
 
 # Export CSV (téléchargement direct)
 curl -o resultats.csv "http://127.0.0.1:8001/export?q=transport&format=csv&max_pages=3"
@@ -185,12 +221,12 @@ curl "http://127.0.0.1:8001/tabular/53699d0ea3a729239d205b2e"
 
 | Paramètre | Type | Valeurs | Défaut | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `q` | string | — | *requis* | Mot-clé de recherche |
+| `q` | string | — | `""` | Mot-clé (peut être vide si un filtre est appliqué) |
 | `page` | int | ≥ 1 | `1` | Numéro de page |
 | `page_size` | int | 1–50 | `10` | Résultats par page |
 | `type` | enum | `dataset`, `dataservice`, `all` | `all` | Type de résultat |
 | `sort` | enum | `relevance`, `popularity`, `recent` | `relevance` | Tri |
-| `organization` | string | — | — | Slug de l'organisation |
+| `organization` | string | — | — | Slug ou ID d'organisation |
 | `access_type` | enum | `open`, `restricted` | — | Type d'accès |
 | `last_update` | enum | `last_30_days`, `last_12_months`, `last_3_years` | — | Récence |
 
@@ -198,9 +234,10 @@ curl "http://127.0.0.1:8001/tabular/53699d0ea3a729239d205b2e"
 
 | Paramètre | Type | Valeurs | Défaut | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `q` | string | — | *requis* | Mot-clé |
+| `q` | string | — | `""` | Mot-clé |
 | `format` | enum | `csv`, `json` | `csv` | Format de sortie |
 | `max_pages` | int | 1–10 | `3` | Pages agrégées |
+| `organization` | string | — | — | Slug ou ID d'organisation |
 
 ---
 
@@ -240,8 +277,9 @@ curl "http://127.0.0.1:8001/tabular/53699d0ea3a729239d205b2e"
 | :--- | :--- |
 | **Backend** | Python 3.12, FastAPI, httpx (async), asyncio |
 | **Frontend** | HTML5, CSS3, JavaScript vanilla, DSFR 1.11 |
-| **API sources** | data.gouv.fr (v1, v2, dataservices, tabulaire) |
+| **API sources** | data.gouv.fr (v1, v2, dataservices, tabulaire, organizations) |
 | **Design** | Système de Design de l'État (Marianne) |
+| **Cache** | Dict en mémoire (slug → ID organisation) |
 
 ---
 
