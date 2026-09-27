@@ -24,6 +24,38 @@ Les résultats sont **dédoublonnés**, **normalisés** et **triés** selon plus
 
 ---
 
+## 📸 Captures d'écran
+
+### Interface de recherche
+
+![Recherche "transport" triée par popularité](<img width="1644" height="6458" alt="Screenshot 2026-09-28 at 02-10-10 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/c5ea1588-2198-4b83-908b-24dd8fdaf4ca" />
+)
+
+*Résultats de la recherche « transport » triés par popularité, avec le score calculé à partir des métriques v2.*
+
+### Filtres par organisation et tags
+
+![Filtres actifs dans la sidebar](<img width="1644" height="6458" alt="Screenshot 2026-09-28 at 02-02-15 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/115f0671-84f6-4357-90b7-3f62b4ca5bd1" />
+)
+
+*Filtres client par organisation et par tag, avec chips actives retirables d'un clic.*
+
+### Mode sombre
+
+![Interface en mode sombre](<img width="1644" height="6458" alt="Screenshot 2026-09-28 at 02-10-10 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/4a632c1d-03b6-4f23-acd8-d9aede9f7c03" />
+)
+
+*Basculement en mode sombre persistant, conforme au DSFR.*
+
+### Export CSV
+
+![Export CSV des résultats](<img width="1644" height="6458" alt="Screenshot 2026-09-28 at 02-12-39 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/063fb24f-0ff1-4ab0-b10f-d4f6b1558a7b" />
+)
+
+*Export CSV en streaming des résultats agrégés sur plusieurs pages.*
+
+---
+
 ## ✨ Fonctionnalités
 
 - 🔎 **Recherche multi-sources** en parallèle (v1, v2, dataservices)
@@ -48,7 +80,9 @@ moteur-api/
 ├── index.html           # Frontend Marianne (DSFR)
 ├── requirements.txt     # Dépendances Python
 ├── LICENSE              # Licence etalab-2.0
-└── README.md
+├── README.md
+└── docs/
+    └── screenshots/     # Captures d'écran du README
 ```
 
 ### Flux de données
@@ -221,12 +255,18 @@ curl "http://127.0.0.1:8001/tabular/53699d0ea3a729239d205b2e"
 
 ```
 .
-├── main.py              # Application FastAPI complète
-├── index.html           # Interface web (design Marianne)
-├── requirements.txt     # Dépendances Python
-├── LICENSE              # Licence etalab-2.0
-├── README.md            # Ce fichier
-└── Mapi/                # Environnement virtuel (non versionné)
+├── main.py                     # Application FastAPI complète
+├── index.html                  # Interface web (design Marianne)
+├── requirements.txt            # Dépendances Python
+├── LICENSE                     # Licence etalab-2.0
+├── README.md                   # Ce fichier
+├── docs/
+│   └── screenshots/            # Captures d'écran
+│       ├── 01-recherche.png
+│       ├── 02-filtres.png
+│       ├── 03-mode-sombre.png
+│       └── 04-export-csv.png
+└── Mapi/                       # Environnement virtuel (non versionné)
 ```
 
 ---
