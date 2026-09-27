@@ -33,25 +33,29 @@ Les résultats sont **dédoublonnés**, **normalisés** et **triés** selon plus
 
 ### Interface de recherche
 
-<img src="https://github.com/user-attachments/assets/c5ea1588-2198-4b83-908b-24dd8fdaf4ca" alt="Recherche transport triée par popularité" width="800">
+<img width="1644" height="6617" alt="Screenshot 2026-09-28 at 03-05-25 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/cae997f1-ee58-44dd-8dfb-298e86cad7f8" />
+
 
 *Résultats de la recherche « transport » triés par popularité, avec le score calculé à partir des métriques v2.*
 
 ### Filtres par organisation et tags
 
-<img src="https://github.com/user-attachments/assets/115f0671-84f6-4357-90b7-3f62b4ca5bd1" alt="Filtres actifs dans la sidebar" width="800">
+<img width="1644" height="2883" alt="Screenshot 2026-09-28 at 03-05-40 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/e5f3b687-4111-49a2-9c72-7365a36aa25a" />
+
 
 *Filtres client par organisation et par tag, avec chips actives retirables d'un clic.*
 
 ### Mode sombre
 
-<img src="https://github.com/user-attachments/assets/4a632c1d-03b6-4f23-acd8-d9aede9f7c03" alt="Interface en mode sombre" width="800">
+<img width="1644" height="2865" alt="Screenshot 2026-09-28 at 03-05-55 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/94e2b3e5-17ad-407e-8d9a-a53ce3774816" />
+
 
 *Basculement en mode sombre persistant, conforme au DSFR.*
 
-### Export CSV
+### Export CSV & JSON
 
-<img src="https://github.com/user-attachments/assets/063fb24f-0ff1-4ab0-b10f-d4f6b1558a7b" alt="Export CSV des résultats" width="800">
+<img width="1644" height="2865" alt="Screenshot 2026-09-28 at 03-08-03 Méta-moteur data gouv fr" src="https://github.com/user-attachments/assets/593def96-ce7b-412a-a14b-39f0ea21d7d9" />
+
 
 *Export CSV en streaming des résultats agrégés sur plusieurs pages.*
 
