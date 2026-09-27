@@ -1,21 +1,32 @@
-MIT License
+LICENCE OUVERTE / OPEN LICENCE
+Version 2.0
 
-Copyright (c) 2026 gunout
+« Concessionnaire » désigne la personne morale qui met à disposition
+les « Informations » sous les conditions prévues par la présente licence.
+« Informations » désigne les données, bases de données et logiciels mis à
+disposition par le Concessionnaire et couverts par la présente licence.
+« Réutilisateur » désigne toute personne physique ou morale qui utilise
+les Informations.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Le Concessionnaire concède au Réutilisateur une licence non-exclusive,
+gratuite, mondiale, pour une durée illimitée, lui permettant de :
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. Réutiliser les Informations, y compris à des fins commerciales ;
+2. Redistribuer les Informations, y compris sous forme modifiée ;
+3. Associer les Informations à d'autres données ;
+4. Produire des Informations dérivées ;
+5. Exploiter les Informations, y compris en les intégrant dans un
+   produit ou service.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Cette autorisation est consentie sous réserve du respect des conditions
+suivantes :
+
+- Mention de la paternité : le Réutilisateur doit mentionner la source
+  des Informations et la date de leur dernière mise à jour.
+- Mention de la licence : le Réutilisateur doit mentionner la présente
+  licence et, le cas échéant, fournir un lien vers celle-ci.
+
+Le Concessionnaire ne peut être tenu responsable des dommages directs
+ou indirects résultant de l'utilisation des Informations.
+
+Texte complet : https://www.etalab.gouv.fr/licence-ouverte-open-licence/
