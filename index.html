@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fr" data-fr-scheme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Méta-moteur data.gouv.fr</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.11.2/dist/dsfr.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.11.2/dist/utility/utility.min.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='33' height='100' fill='%23000091'/%3E%3Crect x='33' width='34' height='100' fill='%23fff'/%3E%3Crect x='67' width='33' height='100' fill='%23E1000F'/%3E%3C/svg%3E" />
+  <style>
+    /* ---------- Thème clair (défaut) ---------- */
+    :root {
+      --card-bg: #fff;
+      --card-border: var(--border-default-grey);
+      --filter-bg: var(--background-alt-grey);
+    }
+    /* ---------- Thème sombre ---------- */
+    [data-fr-scheme="dark"] {
+      --card-bg: #1e1e1e;
+      --card-border: #3a3a3a;
+      --filter-bg: #242424;
+    }
+    [data-fr-scheme="dark"] body { background: #1e1e1e; color: #eee; }
+    [data-fr-scheme="dark"] .fr-header,
+    [data-fr-scheme="dark"] .fr-footer,
+    [data-fr-scheme="dark"] .marianne-band { filter: brightness(.92); }
+    [data-fr-scheme="dark"] .result-card h3 a { color: #8ab4ff; }
+    [data-fr-scheme="dark"] .result-card h3 a:hover { color: #aecbff; }
+
+    /* ---------- Composants ---------- */
+    .result-card {
+      border: 1px solid var(--card-border);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      background: var(--card-bg);
+      border-radius: 4px;
+      transition: background .2s, border-color .2s;
+    }
+    .result-card h3 { margin: 0 0 .5rem; }
+    .result-card h3 a { color: var(--text-action-high-blue-france); text-decoration: none; }
+    .result-card h3 a:hover { text-decoration: underline; }
+    .meta-line { font-size: .875rem; color: var(--text-mention-grey); margin-bottom: .5rem; }
+    .desc { color: var(--text-default-grey); }
+    .stats { font-size: .8125rem; color: var(--text-mention-grey); margin-top: .5rem; }
+    .toolbar { display: flex; gap: .75rem; align-items: center; margin: 1rem 0; flex-wrap: wrap; }
+    .spinner {
+      display: inline-block; width: 1rem; height: 1rem;
+      border: 2px solid var(--border-default-grey);
+      border-top-color: var(--text-action-high-blue-france);
+      border-radius: 50%; animation: spin .8s linear infinite;
+      vertical-align: -2px; margin-right: .5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { padding: 2rem; text-align: center; color: var(--text-mention-grey); }
+    .error-box { border-left: 4px solid var(--text-default-error); background: var(--background-alt-red-marianne); padding: 1rem; }
+    .pagination { display: flex; gap: .5rem; align-items: center; }
+    .filter-block {
+      border: 1px solid var(--card-border);
+      padding: 1rem;
+      background: var(--filter-bg);
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+    .filter-block h2 { margin-top: 0; font-size: 1rem; }
+    .org-list, .tag-list { list-style: none; padding: 0; margin: 0; max-height: 280px; overflow-y: auto; }
+    .org-list li, .tag-list li { margin-bottom: .25rem; }
+    .org-list label, .tag-list label {
+      font-size: .875rem; cursor: pointer;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .count { color: var(--text-mention-grey); font-size: .75rem; margin-left: auto; }
+    .marianne-band {
+      height: 6px;
+      background: linear-gradient(to right, #000091 0%, #000091 33%, #fff 33%, #fff 66%, #E1000F 66%, #E1000F 100%);
+    }
+    .footer-gouv { background: #fff; border-top: 2px solid var(--border-default-grey); padding: 1.5rem 0; margin-top: 3rem; }
+    [data-fr-scheme="dark"] .footer-gouv { background: #1e1e1e; }
+    .devise { font-size: .75rem; letter-spacing: .05em; color: var(--text-mention-grey); margin-top: .25rem; }
+
+    /* ---------- Bouton thème ---------- */
+    .theme-toggle {
+      background: transparent; border: 1px solid var(--border-default-grey);
+      border-radius: 50%; width: 2.5rem; height: 2.5rem;
+      cursor: pointer; font-size: 1.1rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: inherit;
+    }
+    .theme-toggle:hover { background: var(--filter-bg); }
+
+    /* ---------- Tags (filtres) ---------- */
+    .tag-chip {
+      display: inline-block; font-size: .75rem;
+      background: var(--filter-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 999px; padding: 1px 8px; margin: 0 4px 4px 0;
+      color: var(--text-mention-grey);
+    }
+    .active-filters {
+      display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem;
+    }
+    .active-filters .fr-tag { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- En-tête de l'État -->
+  <header role="banner" class="fr-header">
+    <div class="fr-header__body">
+      <div class="fr-container">
+        <div class="fr-header__body-row">
+          <div class="fr-header__brand fr-enlarge-link">
+            <div class="fr-header__brand-top">
+              <div class="fr-header__logo">
+                <p class="fr-logo">
+                  République<br>Française
+                  <span class="devise">Liberté<br>Égalité<br>Fraternité</span>
+                </p>
+              </div>
+            </div>
+            <div class="fr-header__service">
+              <a href="/" title="Accueil — Méta-moteur data.gouv.fr">
+                <p class="fr-header__service-title">Méta-moteur data.gouv.fr</p>
+              </a>
+              <p class="fr-header__service-tagline">Recherche unifiée dans les jeux de données et les API publiques</p>
+            </div>
+          </div>
+          <div class="fr-header__tools">
+            <button class="theme-toggle" id="theme-toggle" aria-label="Basculer le thème" title="Basculer le thème clair/sombre">🌙</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Bandeau tricolore -->
+  <div class="marianne-band"></div>
+
+  <main role="main" id="main">
+    <div class="fr-container fr-my-6w">
+
+      <h1 class="fr-h3">Rechercher un jeu de données ou une API</h1>
+      <p class="fr-text--lead">
+        Interroge en parallèle le catalogue v1, le catalogue v2 et les dataservices de
+        <a href="https://www.data.gouv.fr" target="_blank" rel="noopener">data.gouv.fr</a>.
+      </p>
+
+      <!-- Formulaire de recherche -->
+      <form id="search-form" class="fr-mt-4w" role="search">
+        <div class="fr-grid-row fr-grid-row--gutters fr-grid-row--bottom">
+          <div class="fr-col-12 fr-col-md-6">
+            <div class="fr-input-group">
+              <label class="fr-label" for="q">Mot-clé</label>
+              <input class="fr-input" type="search" id="q" name="q"
+                     placeholder="Ex : transport, logement, finance…" required />
+            </div>
+          </div>
+          <div class="fr-col-6 fr-col-md-2">
+            <div class="fr-select-group">
+              <label class="fr-label" for="type">Type</label>
+              <select class="fr-select" id="type">
+                <option value="all" selected>Tout</option>
+                <option value="dataset">Jeux de données</option>
+                <option value="dataservice">API</option>
+              </select>
+            </div>
+          </div>
+          <div class="fr-col-6 fr-col-md-2">
+            <div class="fr-select-group">
+              <label class="fr-label" for="sort">Tri</label>
+              <select class="fr-select" id="sort">
+                <option value="relevance" selected>Pertinence</option>
+                <option value="popularity">Popularité</option>
+                <option value="recent">Récence</option>
+              </select>
+            </div>
+          </div>
+          <div class="fr-col-12 fr-col-md-2">
+            <button class="fr-btn fr-btn--icon-right fr-icon-search-line" type="submit">Rechercher</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Filtres actifs -->
+      <div class="active-filters" id="active-filters" hidden></div>
+
+      <!-- Corps : sidebar + résultats -->
+      <div class="fr-grid-row fr-grid-row--gutters fr-mt-4w">
+
+        <!-- Sidebar -->
+        <aside class="fr-col-12 fr-col-md-3">
+
+          <div class="filter-block">
+            <h2 class="fr-h6">Organisation</h2>
+            <ul class="org-list" id="org-list">
+              <li><span class="fr-text--sm" style="color:var(--text-mention-grey)">Lance une recherche.</span></li>
+            </ul>
+          </div>
+
+          <div class="filter-block">
+            <h2 class="fr-h6">Tags</h2>
+            <ul class="tag-list" id="tag-list">
+              <li><span class="fr-text--sm" style="color:var(--text-mention-grey)">Lance une recherche.</span></li>
+            </ul>
+          </div>
+
+          <button class="fr-btn fr-btn--tertiary fr-btn--sm fr-mt-1w" id="reset-filters" hidden>
+            Réinitialiser tous les filtres
+          </button>
+        </aside>
+
+        <!-- Résultats -->
+        <section class="fr-col-12 fr-col-md-9">
+          <div class="toolbar" id="toolbar" hidden>
+            <div class="pagination">
+              <button class="fr-btn fr-btn--secondary fr-btn--sm" id="prev" disabled>← Précédent</button>
+              <span id="page-info" class="fr-text--sm fr-mb-0">—</span>
+              <button class="fr-btn fr-btn--secondary fr-btn--sm" id="next" disabled>Suivant →</button>
+            </div>
+            <button class="fr-btn fr-btn--secondary fr-btn--sm fr-ml-auto" id="export-csv">
+              Exporter en CSV
+            </button>
+          </div>
+
+          <div id="results" aria-live="polite"></div>
+        </section>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Pied de page -->
+  <footer class="fr-footer footer-gouv" role="contentinfo">
+    <div class="fr-container">
+      <div class="fr-footer__body">
+        <div class="fr-footer__brand fr-enlarge-link">
+          <p class="fr-logo">
+            République<br>Française
+            <span class="devise">Liberté<br>Égalité<br>Fraternité</span>
+          </p>
+        </div>
+        <div class="fr-footer__content">
+          <p class="fr-footer__content-desc">
+            Méta-moteur open source interrogeant les API publiques de data.gouv.fr.
+            Les données restent la propriété de leurs producteurs respectifs.
+          </p>
+          <ul class="fr-footer__content-list">
+            <li class="fr-footer__content-item"><a class="fr-footer__content-link" href="https://www.data.gouv.fr" target="_blank" rel="noopener">data.gouv.fr</a></li>
+            <li class="fr-footer__content-item"><a class="fr-footer__content-link" href="https://www.numerique.gouv.fr" target="_blank" rel="noopener">numerique.gouv.fr</a></li>
+            <li class="fr-footer__content-item"><a class="fr-footer__content-link" href="https://www.info.gouv.fr" target="_blank" rel="noopener">info.gouv.fr</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="fr-footer__bottom">
+        <ul class="fr-footer__bottom-list">
+          <li class="fr-footer__bottom-item">
+            <span class="fr-footer__bottom-link">Sauf mention contraire, tous les contenus de ce site sont sous licence etalab-2.0</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const API = 'http://localhost:8001';
+    const PAGE_SIZE = 10;
+
+    const state = {
+      q: '',
+      type: 'all',
+      sort: 'relevance',
+      page: 1,
+      orgs: new Set(),
+      tags: new Set(),
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+    const resultsEl = $('#results');
+    const toolbar = $('#toolbar');
+    const pageInfo = $('#page-info');
+    const prevBtn = $('#prev');
+    const nextBtn = $('#next');
+    const exportBtn = $('#export-csv');
+    const orgListEl = $('#org-list');
+    const tagListEl = $('#tag-list');
+    const resetFiltersBtn = $('#reset-filters');
+    const activeFiltersEl = $('#active-filters');
+    const themeToggle = $('#theme-toggle');
+
+    let lastResults = [];
+
+    // ---------- Thème ----------
+    function applyTheme(scheme) {
+      document.documentElement.setAttribute('data-fr-scheme', scheme);
+      themeToggle.textContent = scheme === 'dark' ? '☀️' : '🌙';
+      try { localStorage.setItem('moteur-theme', scheme); } catch (e) {}
+    }
+    (function initTheme() {
+      let saved = null;
+      try { saved = localStorage.getItem('moteur-theme'); } catch (e) {}
+      if (!saved) {
+        saved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      applyTheme(saved);
+    })();
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-fr-scheme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // ---------- Utilitaires ----------
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    function badge(text, variant = '') {
+      return `<p class="fr-badge fr-badge--sm ${variant} fr-mr-1v">${escapeHtml(text)}</p>`;
+    }
+
+    function renderItem(item) {
+      const typeBadge = item.type === 'dataservice'
+        ? badge('API', 'fr-badge--success')
+        : badge('Jeu de données');
+      const sourceBadge = badge(`source : ${item.source}`, 'fr-badge--info');
+      const alsoBadge = item.also_in
+        ? badge(`aussi dans ${item.also_in.join(', ')}`, 'fr-badge--new')
+        : '';
+      const org = item.organisation
+        ? `<span class="fr-ml-1v">· ${escapeHtml(item.organisation)}</span>`
+        : '';
+      const pop = item.popularity
+        ? `<p class="stats">Score de popularité : ${item.popularity.toLocaleString('fr-FR')}</p>`
+        : '';
+      const tags = (item.tags || []).slice(0, 6)
+        .map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('');
+      const tagsLine = tags ? `<div class="fr-mt-1v">${tags}</div>` : '';
+      const url = item.url || '#';
+      return `
+        <article class="result-card">
+          <h3 class="fr-h6">
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(item.titre || item.id)}</a>
+          </h3>
+          <div class="meta-line">${typeBadge}${sourceBadge}${alsoBadge}${org}</div>
+          <p class="desc fr-mb-0">${escapeHtml(item.description || '')}</p>
+          ${tagsLine}
+          ${pop}
+        </article>
+      `;
+    }
+
+    // ---------- Construction des filtres ----------
+    function buildFilterList(items, key, container, stateSet, labelEmpty) {
+      const counts = new Map();
+      for (const it of items) {
+        const values = key === 'tags'
+          ? (it.tags || [])
+          : [it.organisation || 'Sans organisation'];
+        for (const v of values) {
+          counts.set(v, (counts.get(v) || 0) + 1);
+        }
+      }
+      const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+
+      if (!entries.length) {
+        container.innerHTML = `<li><span class="fr-text--sm" style="color:var(--text-mention-grey)">${labelEmpty}</span></li>`;
+        return;
+      }
+
+      container.innerHTML = entries.map(([value, count]) => {
+        const checked = stateSet.has(value) ? 'checked' : '';
+        const id = key + '-' + btoa(unescape(encodeURIComponent(value))).replace(/[^a-zA-Z0-9]/g,'').slice(0, 24);
+        return `
+          <li>
+            <label for="${id}">
+              <input type="checkbox" id="${id}" value="${escapeHtml(value)}" ${checked} data-filter="${key}">
+              <span>${escapeHtml(value)}</span>
+              <span class="count">${count}</span>
+            </label>
+          </li>
+        `;
+      }).join('');
+
+      container.querySelectorAll(`[data-filter="${key}"]`).forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) stateSet.add(cb.value);
+          else stateSet.delete(cb.value);
+          updateActiveFilters();
+          renderFiltered();
+        });
+      });
+    }
+
+    function buildOrgList(items) {
+      buildFilterList(items, 'orgs', orgListEl, state.orgs, 'Aucune organisation.');
+    }
+    function buildTagList(items) {
+      buildFilterList(items, 'tags', tagListEl, state.tags, 'Aucun tag.');
+    }
+
+    // ---------- Filtres actifs (chips) ----------
+    function updateActiveFilters() {
+      const chips = [];
+      state.orgs.forEach(v => chips.push({ kind: 'orgs', value: v, label: v }));
+      state.tags.forEach(v => chips.push({ kind: 'tags', value: v, label: '#' + v }));
+
+      resetFiltersBtn.hidden = chips.length === 0;
+
+      if (!chips.length) {
+        activeFiltersEl.hidden = true;
+        activeFiltersEl.innerHTML = '';
+        return;
+      }
+
+      activeFiltersEl.hidden = false;
+      activeFiltersEl.innerHTML = '<span class="fr-text--sm fr-mb-0">Filtres actifs :</span> ' +
+        chips.map(c => `
+          <button class="fr-tag fr-tag--sm" data-remove-kind="${c.kind}" data-remove-value="${escapeHtml(c.value)}" title="Retirer ce filtre">
+            ${escapeHtml(c.label)} ✕
+          </button>
+        `).join('');
+
+      activeFiltersEl.querySelectorAll('[data-remove-kind]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const kind = btn.dataset.removeKind;
+          const value = btn.dataset.removeValue;
+          const set = kind === 'orgs' ? state.orgs : state.tags;
+          set.delete(value);
+          // décoche la case correspondante
+          const container = kind === 'orgs' ? orgListEl : tagListEl;
+          container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if (cb.value === value) cb.checked = false;
+          });
+          updateActiveFilters();
+          renderFiltered();
+        });
+      });
+    }
+
+    // ---------- Rendu filtré ----------
+    function renderFiltered() {
+      let items = lastResults;
+      if (state.orgs.size) {
+        items = items.filter(it => state.orgs.has(it.organisation || 'Sans organisation'));
+      }
+      if (state.tags.size) {
+        items = items.filter(it => (it.tags || []).some(t => state.tags.has(t)));
+      }
+
+      if (!items.length) {
+        resultsEl.innerHTML = `<div class="empty">Aucun résultat ne correspond aux filtres sélectionnés.</div>`;
+        return;
+      }
+      resultsEl.innerHTML = items.map(renderItem).join('');
+    }
+
+    // ---------- Recherche ----------
+    async function doSearch() {
+      resultsEl.innerHTML = `<p class="fr-text--sm"><span class="spinner"></span>Recherche en cours…</p>`;
+      toolbar.hidden = false;
+
+      const url = `${API}/search?q=${encodeURIComponent(state.q)}&page=${state.page}&page_size=${PAGE_SIZE}&type=${state.type}&sort=${state.sort}`;
+
+      try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+
+        lastResults = data.results;
+        pageInfo.textContent = `Page ${data.page} — ${data.count} résultat(s)`;
+        prevBtn.disabled = data.page <= 1;
+        nextBtn.disabled = data.count < PAGE_SIZE;
+
+        buildOrgList(data.results);
+        buildTagList(data.results);
+        updateActiveFilters();
+        renderFiltered();
+
+        if (data.errors && data.errors.length) {
+          const box = document.createElement('div');
+          box.className = 'error-box fr-mt-2w';
+          box.innerHTML = `<p class="fr-text--sm fr-mb-0"><strong>Sources en erreur :</strong> ${escapeHtml(data.errors.join(' | '))}</p>`;
+          resultsEl.prepend(box);
+        }
+      } catch (err) {
+        resultsEl.innerHTML = `
+          <div class="error-box">
+            <p class="fr-mb-1v"><strong>Erreur de connexion au méta-moteur.</strong></p>
+            <p class="fr-text--sm fr-mb-0">${escapeHtml(err.message)} — vérifie que le serveur uvicorn tourne bien sur ${API}.</p>
+          </div>`;
+        toolbar.hidden = true;
+      }
+    }
+
+    // ---------- Événements ----------
+    $('#search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      state.q = $('#q').value.trim();
+      state.type = $('#type').value;
+      state.sort = $('#sort').value;
+      state.page = 1;
+      state.orgs.clear();
+      state.tags.clear();
+      updateActiveFilters();
+      if (state.q) doSearch();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (state.page > 1) { state.page--; doSearch(); window.scrollTo({top:0,behavior:'smooth'}); }
+    });
+    nextBtn.addEventListener('click', () => {
+      state.page++; doSearch(); window.scrollTo({top:0,behavior:'smooth'});
+    });
+    exportBtn.addEventListener('click', () => {
+      const org = state.orgs.size === 1 ? [...state.orgs][0] : '';
+      const params = new URLSearchParams({
+        q: state.q, format: 'csv', max_pages: 3,
+        sort: state.sort, type: state.type,
+      });
+      if (org) params.set('organization', org);
+      window.location.href = `${API}/export?${params.toString()}`;
+    });
+    resetFiltersBtn.addEventListener('click', () => {
+      state.orgs.clear();
+      state.tags.clear();
+      document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(cb => cb.checked = false);
+      updateActiveFilters();
+      renderFiltered();
+    });
+  </script>
+</body>
+</html>
