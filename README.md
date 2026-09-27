@@ -2,11 +2,11 @@
 
 > Méta-moteur de recherche unifié pour interroger en parallèle les API publiques de [data.gouv.fr](https://www.data.gouv.fr).
 
-![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?style=flat-square&logo=fastapi&logoColor=white)
-![DSFR](https://img.shields.io/badge/DSFR-1.11-000091?style=flat-square)
-![Licence](https://img.shields.io/badge/Licence-etatlab--2.0-blue?style=flat-square)
-![Statut](https://img.shields.io/badge/Statut-actif-success?style=flat-square)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![DSFR](https://img.shields.io/badge/DSFR-1.11-000091?style=flat-square)](https://www.systeme-de-design.gouv.fr/)
+[![Licence](https://img.shields.io/badge/Licence-etalab--2.0-blue?style=flat-square)](https://www.etalab.gouv.fr/licence-ouverte-open-licence/)
+[![Statut](https://img.shields.io/badge/Statut-actif-success?style=flat-square)]()
 
 ---
 
@@ -47,6 +47,7 @@ moteur-api/
 ├── main.py              # Backend FastAPI (méta-moteur)
 ├── index.html           # Frontend Marianne (DSFR)
 ├── requirements.txt     # Dépendances Python
+├── LICENSE              # Licence etalab-2.0
 └── README.md
 ```
 
@@ -87,8 +88,9 @@ moteur-api/
 ### Étapes
 
 ```bash
-# 1. Cloner le dépôt (ou se placer dans le dossier du projet)
-cd "Moteur Api"
+# 1. Cloner le dépôt
+git clone https://github.com/gunout/moteur-api.git
+cd moteur-api
 
 # 2. Créer et activer un environnement virtuel
 python3 -m venv Mapi
@@ -222,6 +224,7 @@ curl "http://127.0.0.1:8001/tabular/53699d0ea3a729239d205b2e"
 ├── main.py              # Application FastAPI complète
 ├── index.html           # Interface web (design Marianne)
 ├── requirements.txt     # Dépendances Python
+├── LICENSE              # Licence etalab-2.0
 ├── README.md            # Ce fichier
 └── Mapi/                # Environnement virtuel (non versionné)
 ```
