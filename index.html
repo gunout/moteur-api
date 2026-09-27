@@ -8,13 +8,11 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.11.2/dist/utility/utility.min.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='33' height='100' fill='%23000091'/%3E%3Crect x='33' width='34' height='100' fill='%23fff'/%3E%3Crect x='67' width='33' height='100' fill='%23E1000F'/%3E%3C/svg%3E" />
   <style>
-    /* ---------- Thème clair (défaut) ---------- */
     :root {
       --card-bg: #fff;
       --card-border: var(--border-default-grey);
       --filter-bg: var(--background-alt-grey);
     }
-    /* ---------- Thème sombre ---------- */
     [data-fr-scheme="dark"] {
       --card-bg: #1e1e1e;
       --card-border: #3a3a3a;
@@ -27,7 +25,6 @@
     [data-fr-scheme="dark"] .result-card h3 a { color: #8ab4ff; }
     [data-fr-scheme="dark"] .result-card h3 a:hover { color: #aecbff; }
 
-    /* ---------- Composants ---------- */
     .result-card {
       border: 1px solid var(--card-border);
       padding: 1rem 1.25rem;
@@ -77,7 +74,6 @@
     [data-fr-scheme="dark"] .footer-gouv { background: #1e1e1e; }
     .devise { font-size: .75rem; letter-spacing: .05em; color: var(--text-mention-grey); margin-top: .25rem; }
 
-    /* ---------- Bouton thème ---------- */
     .theme-toggle {
       background: transparent; border: 1px solid var(--border-default-grey);
       border-radius: 50%; width: 2.5rem; height: 2.5rem;
@@ -87,7 +83,6 @@
     }
     .theme-toggle:hover { background: var(--filter-bg); }
 
-    /* ---------- Tags (filtres) ---------- */
     .tag-chip {
       display: inline-block; font-size: .75rem;
       background: var(--filter-bg);
@@ -100,18 +95,50 @@
     }
     .active-filters .fr-tag { cursor: pointer; }
 
-    /* ---------- Barre d'export ---------- */
     .export-group {
       margin-left: auto;
       display: flex;
       gap: .5rem;
       flex-wrap: wrap;
     }
+
+    /* ---------- Ministères ---------- */
+    .ministeres-list {
+      display: flex;
+      flex-direction: column;
+      gap: .25rem;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .ministere-btn {
+      text-align: left;
+      padding: .4rem .6rem;
+      font-size: .8125rem;
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .ministere-btn:hover { background: var(--filter-bg); }
+    .ministere-btn.active {
+      background: var(--text-action-high-blue-france);
+      color: white;
+      border-color: var(--text-action-high-blue-france);
+    }
+    .ministere-btn .cert {
+      color: #18753c;
+      font-weight: bold;
+    }
+    .ministere-btn.active .cert { color: #b8fec9; }
   </style>
 </head>
 <body>
 
-  <!-- En-tête de l'État -->
   <header role="banner" class="fr-header">
     <div class="fr-header__body">
       <div class="fr-container">
@@ -140,7 +167,6 @@
     </div>
   </header>
 
-  <!-- Bandeau tricolore -->
   <div class="marianne-band"></div>
 
   <main role="main" id="main">
@@ -152,14 +178,13 @@
         <a href="https://www.data.gouv.fr" target="_blank" rel="noopener">data.gouv.fr</a>.
       </p>
 
-      <!-- Formulaire de recherche -->
       <form id="search-form" class="fr-mt-4w" role="search">
         <div class="fr-grid-row fr-grid-row--gutters fr-grid-row--bottom">
           <div class="fr-col-12 fr-col-md-6">
             <div class="fr-input-group">
               <label class="fr-label" for="q">Mot-clé</label>
               <input class="fr-input" type="search" id="q" name="q"
-                     placeholder="Ex : transport, logement, finance…" required />
+                     placeholder="Ex : transport, logement, finance…" />
             </div>
           </div>
           <div class="fr-col-6 fr-col-md-2">
@@ -188,14 +213,20 @@
         </div>
       </form>
 
-      <!-- Filtres actifs -->
       <div class="active-filters" id="active-filters" hidden></div>
 
-      <!-- Corps : sidebar + résultats -->
       <div class="fr-grid-row fr-grid-row--gutters fr-mt-4w">
 
-        <!-- Sidebar -->
         <aside class="fr-col-12 fr-col-md-3">
+
+          <!-- ⭐ Ministères -->
+          <div class="filter-block">
+            <h2 class="fr-h6">🏛️ Ministères</h2>
+            <p class="fr-text--xs fr-mb-1v" style="color:var(--text-mention-grey)">
+              Cliquez pour filtrer par producteur.
+            </p>
+            <div class="ministeres-list" id="ministeres-list"></div>
+          </div>
 
           <div class="filter-block">
             <h2 class="fr-h6">Organisation</h2>
@@ -216,7 +247,6 @@
           </button>
         </aside>
 
-        <!-- Résultats -->
         <section class="fr-col-12 fr-col-md-9">
           <div class="toolbar" id="toolbar" hidden>
             <div class="pagination">
@@ -241,7 +271,6 @@
     </div>
   </main>
 
-  <!-- Pied de page -->
   <footer class="fr-footer footer-gouv" role="contentinfo">
     <div class="fr-container">
       <div class="fr-footer__body">
@@ -277,6 +306,22 @@
     const API = 'http://localhost:8001';
     const PAGE_SIZE = 10;
 
+    // ⭐ Liste des ministères (12, avec slugs vérifiés)
+    const MINISTERES = [
+      { nom: "Intérieur",                slug: "ministere-de-linterieur", certified: true },
+      { nom: "Transition écologique",    slug: "ministere-de-la-transition-ecologique", certified: true },
+      { nom: "Armées",                   slug: "ministere-des-armees", certified: true },
+      { nom: "Culture",                  slug: "ministere-de-la-culture-et-de-la-communication", certified: true },
+      { nom: "Justice",                  slug: "ministere-de-la-justice", certified: true },
+      { nom: "Économie & Finances",      slug: "ministeres-economiques-et-financiers", certified: true },
+      { nom: "Industrie & Numérique",    slug: "ministere-de-l-economie-de-l-industrie-et-du-numerique", certified: true },
+      { nom: "Agriculture",              slug: "ministere-de-lagriculture-de-lagro-alimentaire-et-de-la-souverainete-alimentaire", certified: true },
+      { nom: "Solidarités & Santé",      slug: "ministere-des-solidarites-et-de-la-sante", certified: true },
+      { nom: "Éducation nationale",      slug: "ministeres-de-leducation-nationale", certified: true },
+      { nom: "Enseignement supérieur",   slug: "ministere-de-lenseignement-superieur-de-la-recherche-et-de-lespace", certified: true },
+      { nom: "Sports",                   slug: "ministere-charge-des-sports", certified: true },
+    ];
+
     const state = {
       q: '',
       type: 'all',
@@ -284,6 +329,7 @@
       page: 1,
       orgs: new Set(),
       tags: new Set(),
+      ministere: null,
     };
 
     const $ = (sel) => document.querySelector(sel);
@@ -299,6 +345,7 @@
     const resetFiltersBtn = $('#reset-filters');
     const activeFiltersEl = $('#active-filters');
     const themeToggle = $('#theme-toggle');
+    const ministeresListEl = $('#ministeres-list');
 
     let lastResults = [];
 
@@ -320,6 +367,37 @@
       const current = document.documentElement.getAttribute('data-fr-scheme');
       applyTheme(current === 'dark' ? 'light' : 'dark');
     });
+
+    // ---------- Ministères ----------
+    function renderMinisteres() {
+      ministeresListEl.innerHTML = MINISTERES.map(m => `
+        <button class="ministere-btn" data-slug="${m.slug}" title="${m.nom}">
+          <span class="cert">${m.certified ? '✓' : ''}</span>
+          <span>${m.nom}</span>
+        </button>
+      `).join('');
+
+      ministeresListEl.querySelectorAll('.ministere-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const slug = btn.dataset.slug;
+          if (state.ministere === slug) {
+            state.ministere = null;
+            btn.classList.remove('active');
+          } else {
+            state.ministere = slug;
+            ministeresListEl.querySelectorAll('.ministere-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          }
+          state.orgs.clear();
+          state.tags.clear();
+          document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(cb => cb.checked = false);
+          updateActiveFilters();
+          state.page = 1;
+          doSearch();
+        });
+      });
+    }
+    renderMinisteres();
 
     // ---------- Utilitaires ----------
     function escapeHtml(s) {
@@ -363,7 +441,6 @@
       `;
     }
 
-    // ---------- Construction des filtres ----------
     function buildFilterList(items, key, container, stateSet, labelEmpty) {
       const counts = new Map();
       for (const it of items) {
@@ -412,9 +489,12 @@
       buildFilterList(items, 'tags', tagListEl, state.tags, 'Aucun tag.');
     }
 
-    // ---------- Filtres actifs (chips) ----------
     function updateActiveFilters() {
       const chips = [];
+      if (state.ministere) {
+        const m = MINISTERES.find(x => x.slug === state.ministere);
+        chips.push({ kind: 'ministere', value: state.ministere, label: '🏛️ ' + (m?.nom || state.ministere) });
+      }
       state.orgs.forEach(v => chips.push({ kind: 'orgs', value: v, label: v }));
       state.tags.forEach(v => chips.push({ kind: 'tags', value: v, label: '#' + v }));
 
@@ -438,19 +518,23 @@
         btn.addEventListener('click', () => {
           const kind = btn.dataset.removeKind;
           const value = btn.dataset.removeValue;
-          const set = kind === 'orgs' ? state.orgs : state.tags;
-          set.delete(value);
-          const container = kind === 'orgs' ? orgListEl : tagListEl;
-          container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            if (cb.value === value) cb.checked = false;
-          });
+          if (kind === 'ministere') {
+            state.ministere = null;
+            ministeresListEl.querySelectorAll('.ministere-btn').forEach(b => b.classList.remove('active'));
+          } else {
+            const set = kind === 'orgs' ? state.orgs : state.tags;
+            set.delete(value);
+            const container = kind === 'orgs' ? orgListEl : tagListEl;
+            container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+              if (cb.value === value) cb.checked = false;
+            });
+          }
           updateActiveFilters();
           renderFiltered();
         });
       });
     }
 
-    // ---------- Rendu filtré ----------
     function renderFiltered() {
       let items = lastResults;
       if (state.orgs.size) {
@@ -467,15 +551,24 @@
       resultsEl.innerHTML = items.map(renderItem).join('');
     }
 
-    // ---------- Recherche ----------
     async function doSearch() {
       resultsEl.innerHTML = `<p class="fr-text--sm"><span class="spinner"></span>Recherche en cours…</p>`;
       toolbar.hidden = false;
 
-      const url = `${API}/search?q=${encodeURIComponent(state.q)}&page=${state.page}&page_size=${PAGE_SIZE}&type=${state.type}&sort=${state.sort}`;
+      const url = new URL(`${API}/search`);
+      url.searchParams.set('q', state.q || '');
+      url.searchParams.set('page', state.page);
+      url.searchParams.set('page_size', PAGE_SIZE);
+      url.searchParams.set('type', state.type);
+      url.searchParams.set('sort', state.sort);
+      if (state.ministere) {
+        url.searchParams.set('organization', state.ministere);
+      } else if (state.orgs.size === 1) {
+        url.searchParams.set('organization', [...state.orgs][0]);
+      }
 
       try {
-        const r = await fetch(url);
+        const r = await fetch(url.toString());
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
 
@@ -505,21 +598,22 @@
       }
     }
 
-    // ---------- Construction des paramètres d'export ----------
     function buildExportParams(format) {
-      const org = state.orgs.size === 1 ? [...state.orgs][0] : '';
       const params = new URLSearchParams({
-        q: state.q,
+        q: state.q || '',
         format: format,
         max_pages: 3,
         sort: state.sort,
         type: state.type,
       });
-      if (org) params.set('organization', org);
+      if (state.ministere) {
+        params.set('organization', state.ministere);
+      } else if (state.orgs.size === 1) {
+        params.set('organization', [...state.orgs][0]);
+      }
       return params.toString();
     }
 
-    // ---------- Événements ----------
     $('#search-form').addEventListener('submit', (e) => {
       e.preventDefault();
       state.q = $('#q').value.trim();
@@ -529,7 +623,7 @@
       state.orgs.clear();
       state.tags.clear();
       updateActiveFilters();
-      if (state.q) doSearch();
+      if (state.q || state.ministere) doSearch();
     });
 
     prevBtn.addEventListener('click', () => {
@@ -539,12 +633,9 @@
       state.page++; doSearch(); window.scrollTo({top:0,behavior:'smooth'});
     });
 
-    // Export CSV : téléchargement direct
     exportCsvBtn.addEventListener('click', () => {
       window.location.href = `${API}/export?${buildExportParams('csv')}`;
     });
-
-    // Export JSON : ouverture dans un nouvel onglet (visualisation)
     exportJsonBtn.addEventListener('click', () => {
       window.open(`${API}/export?${buildExportParams('json')}`, '_blank');
     });
@@ -552,7 +643,9 @@
     resetFiltersBtn.addEventListener('click', () => {
       state.orgs.clear();
       state.tags.clear();
+      state.ministere = null;
       document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(cb => cb.checked = false);
+      ministeresListEl.querySelectorAll('.ministere-btn').forEach(b => b.classList.remove('active'));
       updateActiveFilters();
       renderFiltered();
     });

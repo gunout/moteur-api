@@ -9,13 +9,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 app = FastAPI(title="Meta-moteur data.gouv.fr")
 
-# ---------------------------------------------------------------------------
-# CORS — indispensable pour que le frontend (file:// ou autre port) puisse
-# appeler cette API depuis un navigateur.
-# ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],           # en dev ; à restreindre en production
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,6 +22,41 @@ BASE_V2 = "https://www.data.gouv.fr/api/2"
 BASE_TABULAR = "https://tabular-api.data.gouv.fr/api"
 TIMEOUT = httpx.Timeout(10.0)
 DATAGOUV_WEB = "https://www.data.gouv.fr"
+
+
+# ---------------------------------------------------------------------------
+# Cache en mémoire : slug d'organisation → ID technique
+# ---------------------------------------------------------------------------
+_ORG_ID_CACHE: dict[str, str] = {}
+
+
+async def resolve_org_id(client: httpx.AsyncClient, slug_or_id: str) -> Optional[str]:
+    """
+    Convertit un slug d'organisation en ID technique (24 chars hex).
+    Si la valeur est déjà un ID, la renvoie telle quelle.
+    Résultat mis en cache pour éviter de refaire l'appel.
+    """
+    # Déjà un ID ?
+    if len(slug_or_id) == 24 and all(c in "0123456789abcdef" for c in slug_or_id.lower()):
+        return slug_or_id
+
+    # Cache ?
+    if slug_or_id in _ORG_ID_CACHE:
+        return _ORG_ID_CACHE[slug_or_id]
+
+    # Appel API v1 pour récupérer l'organisation par son slug
+    try:
+        r = await client.get(f"{BASE_V1}/organizations/{slug_or_id}/")
+        if r.status_code == 200:
+            data = r.json()
+            org_id = data.get("id")
+            if org_id:
+                _ORG_ID_CACHE[slug_or_id] = org_id
+                return org_id
+    except Exception as e:
+        print(f"[resolve_org_id] erreur sur {slug_or_id}: {e}")
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -87,12 +118,16 @@ def clean_item(item: dict) -> dict:
 # Connecteurs API data.gouv.fr
 # ---------------------------------------------------------------------------
 
-async def search_datasets_v1(client, q, page, page_size):
+async def search_datasets_v1(client, q, page, page_size, organization=None):
     try:
-        r = await client.get(
-            f"{BASE_V1}/datasets/",
-            params={"q": q, "page": page, "page_size": page_size},
-        )
+        params = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        if organization:
+            org_id = await resolve_org_id(client, organization)
+            if org_id:
+                params["organization"] = org_id
+        r = await client.get(f"{BASE_V1}/datasets/", params=params)
         r.raise_for_status()
         data = r.json()
         return [
@@ -116,9 +151,14 @@ async def search_datasets_v1(client, q, page, page_size):
 
 
 async def search_datasets_v2(client, q, page, page_size, organization, access_type, last_update):
-    params = {"q": q, "page": page, "page_size": page_size}
+    params = {"page": page, "page_size": page_size}
+    if q:
+        params["q"] = q
+    # ⭐ CORRECTIF CLÉ : convertir le slug en ID
     if organization:
-        params["organization"] = organization
+        org_id = await resolve_org_id(client, organization)
+        if org_id:
+            params["organization"] = org_id
     if access_type:
         params["access_type"] = access_type
     if last_update:
@@ -151,10 +191,10 @@ async def search_datasets_v2(client, q, page, page_size, organization, access_ty
 
 async def search_dataservices(client, q, page, page_size):
     try:
-        r = await client.get(
-            f"{BASE_V2}/dataservices/search/",
-            params={"q": q, "page": page, "page_size": page_size},
-        )
+        params = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        r = await client.get(f"{BASE_V2}/dataservices/search/", params=params)
         r.raise_for_status()
         data = r.json()
         out = []
@@ -194,18 +234,24 @@ async def run_search(
 ):
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         tasks, labels = [], []
-        if type_ in ("dataset", "all"):
-            tasks.append(search_datasets_v1(client, q, page, page_size))
-            labels.append("v1")
-            tasks.append(
-                search_datasets_v2(
-                    client, q, page, page_size, organization, access_type, last_update
-                )
-            )
+
+        # Si un filtre organization est fourni, seule la v2 le gère correctement.
+        if organization:
+            tasks.append(search_datasets_v2(
+                client, q, page, page_size, organization, access_type, last_update
+            ))
             labels.append("v2")
-        if type_ in ("dataservice", "all"):
-            tasks.append(search_dataservices(client, q, page, page_size))
-            labels.append("dataservices")
+        else:
+            if type_ in ("dataset", "all"):
+                tasks.append(search_datasets_v1(client, q, page, page_size))
+                labels.append("v1")
+                tasks.append(search_datasets_v2(
+                    client, q, page, page_size, organization, access_type, last_update
+                ))
+                labels.append("v2")
+            if type_ in ("dataservice", "all"):
+                tasks.append(search_dataservices(client, q, page, page_size))
+                labels.append("dataservices")
 
         responses = await asyncio.gather(*tasks)
 
@@ -227,7 +273,7 @@ async def run_search(
 
 @app.get("/search")
 async def search(
-    q: str = Query(..., min_length=1),
+    q: str = Query("", description="Mot-clé (peut être vide si un filtre est appliqué)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
     organization: Optional[str] = None,
@@ -258,7 +304,7 @@ async def search(
 
 @app.get("/export")
 async def export(
-    q: str = Query(..., min_length=1),
+    q: str = Query("", description="Mot-clé (peut être vide si un filtre est appliqué)"),
     format: Literal["csv", "json"] = Query("csv"),
     max_pages: int = Query(3, ge=1, le=10),
     page_size: int = Query(50, ge=1, le=100),
@@ -332,7 +378,7 @@ async def export(
             buffer.seek(0)
             buffer.truncate(0)
 
-    filename = f"datagouv_{q.replace(' ', '_')[:40]}.csv"
+    filename = f"datagouv_{(q or 'export').replace(' ', '_')[:40]}.csv"
     return StreamingResponse(
         generate_csv(),
         media_type="text/csv; charset=utf-8",
@@ -356,12 +402,22 @@ async def tabular_profile(dataset_id: str):
             return JSONResponse({"error": str(e)}, status_code=500)
 
 
+@app.get("/resolve-org/{slug}")
+async def resolve_org(slug: str):
+    """Endpoint utilitaire pour tester la résolution slug → ID."""
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        org_id = await resolve_org_id(client, slug)
+    return {"slug": slug, "id": org_id, "cached": slug in _ORG_ID_CACHE}
+
+
 @app.get("/")
 async def root():
     return {
         "message": "Meta-moteur data.gouv.fr",
         "endpoints": {
             "search": "/search?q=transport&page=1&page_size=10&type=all&sort=popularity",
+            "search_by_org": "/search?q=&organization=ministere-de-linterieur",
+            "resolve_org": "/resolve-org/ministere-de-linterieur",
             "export_csv": "/export?q=transport&format=csv&max_pages=3",
             "export_json": "/export?q=transport&format=json&max_pages=3",
             "tabular": "/tabular/{dataset_id}",
