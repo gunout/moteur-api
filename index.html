@@ -99,6 +99,14 @@
       display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem;
     }
     .active-filters .fr-tag { cursor: pointer; }
+
+    /* ---------- Barre d'export ---------- */
+    .export-group {
+      margin-left: auto;
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
@@ -216,9 +224,14 @@
               <span id="page-info" class="fr-text--sm fr-mb-0">—</span>
               <button class="fr-btn fr-btn--secondary fr-btn--sm" id="next" disabled>Suivant →</button>
             </div>
-            <button class="fr-btn fr-btn--secondary fr-btn--sm fr-ml-auto" id="export-csv">
-              Exporter en CSV
-            </button>
+            <div class="export-group">
+              <button class="fr-btn fr-btn--secondary fr-btn--sm" id="export-csv">
+                Exporter en CSV
+              </button>
+              <button class="fr-btn fr-btn--secondary fr-btn--sm" id="export-json">
+                Exporter en JSON
+              </button>
+            </div>
           </div>
 
           <div id="results" aria-live="polite"></div>
@@ -279,7 +292,8 @@
     const pageInfo = $('#page-info');
     const prevBtn = $('#prev');
     const nextBtn = $('#next');
-    const exportBtn = $('#export-csv');
+    const exportCsvBtn = $('#export-csv');
+    const exportJsonBtn = $('#export-json');
     const orgListEl = $('#org-list');
     const tagListEl = $('#tag-list');
     const resetFiltersBtn = $('#reset-filters');
@@ -426,7 +440,6 @@
           const value = btn.dataset.removeValue;
           const set = kind === 'orgs' ? state.orgs : state.tags;
           set.delete(value);
-          // décoche la case correspondante
           const container = kind === 'orgs' ? orgListEl : tagListEl;
           container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             if (cb.value === value) cb.checked = false;
@@ -492,6 +505,20 @@
       }
     }
 
+    // ---------- Construction des paramètres d'export ----------
+    function buildExportParams(format) {
+      const org = state.orgs.size === 1 ? [...state.orgs][0] : '';
+      const params = new URLSearchParams({
+        q: state.q,
+        format: format,
+        max_pages: 3,
+        sort: state.sort,
+        type: state.type,
+      });
+      if (org) params.set('organization', org);
+      return params.toString();
+    }
+
     // ---------- Événements ----------
     $('#search-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -511,15 +538,17 @@
     nextBtn.addEventListener('click', () => {
       state.page++; doSearch(); window.scrollTo({top:0,behavior:'smooth'});
     });
-    exportBtn.addEventListener('click', () => {
-      const org = state.orgs.size === 1 ? [...state.orgs][0] : '';
-      const params = new URLSearchParams({
-        q: state.q, format: 'csv', max_pages: 3,
-        sort: state.sort, type: state.type,
-      });
-      if (org) params.set('organization', org);
-      window.location.href = `${API}/export?${params.toString()}`;
+
+    // Export CSV : téléchargement direct
+    exportCsvBtn.addEventListener('click', () => {
+      window.location.href = `${API}/export?${buildExportParams('csv')}`;
     });
+
+    // Export JSON : ouverture dans un nouvel onglet (visualisation)
+    exportJsonBtn.addEventListener('click', () => {
+      window.open(`${API}/export?${buildExportParams('json')}`, '_blank');
+    });
+
     resetFiltersBtn.addEventListener('click', () => {
       state.orgs.clear();
       state.tags.clear();
